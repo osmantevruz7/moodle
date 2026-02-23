@@ -24,13 +24,9 @@ class block_nextclicks extends block_base {
         $this->content = new stdClass();
         $this->content->footer = '';
 
-        $out = html_writer::tag('div', 'Nextclicks block loaded ✅', [
-            'style' => 'font-size:12px; opacity:0.8; margin-bottom:6px;'
-        ]);
-
         $courseid = isset($COURSE->id) ? (int)$COURSE->id : 0;
         if ($courseid <= 0 || $courseid === (int)SITEID) {
-            $this->content->text = $out . html_writer::tag('div', 'Not inside a course.', ['style' => 'font-size:12px;']);
+            $this->content->text = html_writer::tag('div', 'Not inside a course.', ['style' => 'font-size:12px;']);
             return $this->content;
         }
 
@@ -55,19 +51,11 @@ class block_nextclicks extends block_base {
 
         $sourcekey = ($cmid > 0) ? ('cm:' . $cmid) : ('course:' . $courseid);
 
-        $out .= html_writer::tag('div', "Debug: courseid={$courseid}, sourcekey=" . s($sourcekey), [
-            'style' => 'font-size:12px; opacity:0.75; margin-bottom:6px;'
-        ]);
-
         try {
             $items = \local_nextclicks\service::get_top_next($courseid, $sourcekey, 3);
 
-            $out .= html_writer::tag('div', 'Debug: items returned = ' . count($items), [
-                'style' => 'font-size:12px; opacity:0.75; margin-bottom:6px;'
-            ]);
-
             if (empty($items)) {
-                $this->content->text = $out . html_writer::tag('div', get_string('norecommendations', 'block_nextclicks'));
+                $this->content->text = html_writer::tag('div', get_string('norecommendations', 'block_nextclicks'));
                 return $this->content;
             }
 
@@ -78,11 +66,11 @@ class block_nextclicks extends block_base {
             }
             $list .= html_writer::end_tag('ul');
 
-            $this->content->text = $out . $list;
+            $this->content->text = $list;
             return $this->content;
 
         } catch (\Throwable $e) {
-            $this->content->text = $out . html_writer::tag('pre',
+            $this->content->text = html_writer::tag('pre',
                 "ERROR:\n" . $e->getMessage() . "\n\n" . $e->getTraceAsString(),
                 ['style' => 'white-space:pre-wrap; font-size:11px;']
             );

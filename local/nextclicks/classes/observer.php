@@ -4,6 +4,8 @@ namespace local_nextclicks;
 defined('MOODLE_INTERNAL') || die();
 
 class observer {
+    /** @var int Skip duplicate transition events seen within this many seconds. */
+    private const DUPLICATE_WINDOW_SECONDS = 8;
 
     private static function is_editing_noise(): bool {
         // When you are in edit mode, Moodle triggers many admin-like views.
@@ -28,10 +30,40 @@ class observer {
         ]);
     }
 
-    private static function record_transition(int $courseid, string $sourcekey, string $targetkey): void {
-        global $DB;
+    private static function should_record_transition(
+        int $userid,
+        int $courseid,
+        string $sourcekey,
+        string $targetkey
+    ): bool {
+        global $SESSION;
 
         if ($sourcekey === $targetkey) {
+            return false;
+        }
+
+        if (!isset($SESSION->local_nextclicks_recent) || !is_array($SESSION->local_nextclicks_recent)) {
+            $SESSION->local_nextclicks_recent = [];
+        }
+
+        $now = time();
+        $key = $userid . ':' . $courseid . ':' . $sourcekey . '>' . $targetkey;
+        $lasttime = $SESSION->local_nextclicks_recent[$key] ?? 0;
+        if ($lasttime && ($now - (int)$lasttime) < self::DUPLICATE_WINDOW_SECONDS) {
+            return false;
+        }
+
+        if (count($SESSION->local_nextclicks_recent) > 200) {
+            $SESSION->local_nextclicks_recent = [];
+        }
+        $SESSION->local_nextclicks_recent[$key] = $now;
+        return true;
+    }
+
+    private static function record_transition(int $userid, int $courseid, string $sourcekey, string $targetkey): void {
+        global $DB;
+
+        if (!self::should_record_transition($userid, $courseid, $sourcekey, $targetkey)) {
             return;
         }
 
@@ -82,7 +114,7 @@ class observer {
 
         if ($last && (time() - (int)$last->timecreated) < 1800) {
             $sourcekey = $last->itemtype . ':' . (int)$last->itemid;
-            self::record_transition($courseid, $sourcekey, $currentkey);
+            self::record_transition($userid, $courseid, $sourcekey, $currentkey);
         }
 
         self::upsert_last($userid, $courseid, 'course', $courseid);
@@ -98,8 +130,13 @@ class observer {
         $userid = (int)$event->userid;
         $courseid = (int)$event->courseid;
 
-        // For course_module_viewed, objectid is the course module id (cmid).
-        $cmid = (int)$event->objectid;
+        // For module-view events, contextinstanceid is the course_modules.id (cmid).
+        // objectid is usually the activity instance id (assign.id, forum.id, ...), not cmid.
+        $cmid = (int)$event->contextinstanceid;
+        if ($cmid <= 0) {
+            // Defensive fallback for atypical events.
+            $cmid = (int)$event->objectid;
+        }
 
         if ($userid <= 0 || $courseid <= 0 || $courseid === (int)SITEID || $cmid <= 0) {
             return;
@@ -114,7 +151,7 @@ class observer {
 
         if ($last && (time() - (int)$last->timecreated) < 1800) {
             $sourcekey = $last->itemtype . ':' . (int)$last->itemid;
-            self::record_transition($courseid, $sourcekey, $currentkey);
+            self::record_transition($userid, $courseid, $sourcekey, $currentkey);
         }
 
         self::upsert_last($userid, $courseid, 'cm', $cmid);
