@@ -5229,11 +5229,19 @@ class settings_navigation extends navigation_node {
                 if (count($options) > 0) {
                     $blogs = $profilenode->add(get_string('blogs', 'blog'), null, navigation_node::TYPE_CONTAINER);
                     foreach ($options as $type => $option) {
+                        $link = $option['link'] ?? null;
+                        if (is_string($link)) {
+                            $link = new moodle_url($link);
+                        }
+                        if ($link !== null && !($link instanceof moodle_url || $link instanceof action_link)) {
+                            debugging('Skipping invalid blog navigation link of type: ' . get_debug_type($link), DEBUG_DEVELOPER);
+                            continue;
+                        }
                         if ($type == "rss") {
-                            $blogs->add($option['string'], $option['link'], self::TYPE_SETTING, null, null,
+                            $blogs->add($option['string'], $link, self::TYPE_SETTING, null, null,
                                     new pix_icon('i/rss', ''));
                         } else {
-                            $blogs->add($option['string'], $option['link'], self::TYPE_SETTING, null, 'blog' . $type);
+                            $blogs->add($option['string'], $link, self::TYPE_SETTING, null, 'blog' . $type);
                         }
                     }
                 }
