@@ -1,0 +1,38 @@
+version: '3.9'
+
+services:
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: moodle
+      MYSQL_USER: moodle
+      MYSQL_PASSWORD: moodle
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "moodle", "-pmoodle"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  moodle:
+    build:
+      context: docker
+    ports:
+      - "8081:80"
+    volumes:
+      - .:/var/www/html
+      - moodledata:/var/moodledata
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  moodledata:

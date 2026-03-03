@@ -30,5 +30,22 @@
       </KEYS>
     </TABLE>
 
+    <TABLE NAME="local_nextclicks_events" COMMENT="Individual learner navigation events — one row per page view, ordered by time, for EDM extraction">
+      <FIELDS>
+        <FIELD NAME="id"          TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="true" COMMENT="Primary key"/>
+        <FIELD NAME="userid"      TYPE="int"  LENGTH="10" NOTNULL="true" COMMENT="Moodle user ID"/>
+        <FIELD NAME="courseid"    TYPE="int"  LENGTH="10" NOTNULL="true" COMMENT="Course ID"/>
+        <FIELD NAME="itemtype"    TYPE="char" LENGTH="20" NOTNULL="true" COMMENT="course or cm"/>
+        <FIELD NAME="itemid"      TYPE="int"  LENGTH="10" NOTNULL="true" COMMENT="cmid or courseid"/>
+        <FIELD NAME="timecreated" TYPE="int"  LENGTH="10" NOTNULL="true" COMMENT="Unix timestamp of the event"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userid_courseid" UNIQUE="false" FIELDS="userid, courseid"/>
+      </INDEXES>
+    </TABLE>
+
   </TABLES>
 </XMLDB>

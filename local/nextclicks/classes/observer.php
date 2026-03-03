@@ -13,6 +13,17 @@ class observer {
         return !empty($_GET['edit']) || !empty($_POST['edit']);
     }
 
+    private static function log_event(int $userid, int $courseid, string $itemtype, int $itemid): void {
+        global $DB;
+        $DB->insert_record('local_nextclicks_events', (object)[
+            'userid'      => $userid,
+            'courseid'    => $courseid,
+            'itemtype'    => $itemtype,
+            'itemid'      => $itemid,
+            'timecreated' => time(),
+        ]);
+    }
+
     private static function upsert_last(int $userid, int $courseid, string $itemtype, int $itemid): void {
         global $DB;
 
@@ -117,6 +128,7 @@ class observer {
             self::record_transition($userid, $courseid, $sourcekey, $currentkey);
         }
 
+        self::log_event($userid, $courseid, 'course', $courseid);
         self::upsert_last($userid, $courseid, 'course', $courseid);
     }
 
@@ -154,6 +166,7 @@ class observer {
             self::record_transition($userid, $courseid, $sourcekey, $currentkey);
         }
 
+        self::log_event($userid, $courseid, 'cm', $cmid);
         self::upsert_last($userid, $courseid, 'cm', $cmid);
     }
 }
