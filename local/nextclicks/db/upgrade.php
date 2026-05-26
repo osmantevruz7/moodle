@@ -29,5 +29,32 @@ function xmldb_local_nextclicks_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026022600, 'local', 'nextclicks');
     }
 
+    if ($oldversion < 2026032100) {
+        // Add dwell-time ping table for accurate file engagement tracking.
+        $table = new \xmldb_table('local_nextclicks_dwell');
+
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id',          XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('userid',      XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('courseid',    XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('cmid',        XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('seconds',     XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, 0);
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('course_cmid_user', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'cmid', 'userid']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026032100, 'local', 'nextclicks');
+    }
+
+    if ($oldversion < 2026052500) {
+        \local_nextclicks\setup::ensure_webservice_token();
+
+        upgrade_plugin_savepoint(true, 2026052500, 'local', 'nextclicks');
+    }
+
     return true;
 }

@@ -47,5 +47,22 @@
       </INDEXES>
     </TABLE>
 
+    <TABLE NAME="local_nextclicks_dwell" COMMENT="Tracked dwell time on file resources from client heartbeat pings">
+      <FIELDS>
+        <FIELD NAME="id"          TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" COMMENT="Primary key"/>
+        <FIELD NAME="userid"      TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Moodle user ID"/>
+        <FIELD NAME="courseid"    TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Course ID"/>
+        <FIELD NAME="cmid"        TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Course module ID (resource cmid)"/>
+        <FIELD NAME="seconds"     TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Tracked dwell seconds for this ping"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Unix timestamp when the ping was stored"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course_cmid_user" UNIQUE="false" FIELDS="courseid,cmid,userid"/>
+      </INDEXES>
+    </TABLE>
+
   </TABLES>
 </XMLDB>

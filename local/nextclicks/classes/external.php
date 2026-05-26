@@ -106,4 +106,122 @@ class external extends external_api {
             ])
         );
     }
+
+    public static function track_dwell_parameters(): external_function_parameters {
+        return new external_function_parameters([
+            'cmid' => new external_value(PARAM_INT, 'Course module ID (resource)'),
+            'seconds' => new external_value(PARAM_INT, 'Tracked active seconds since last ping'),
+        ]);
+    }
+
+    public static function track_dwell(int $cmid, int $seconds): bool {
+        global $DB, $USER;
+
+        $params = self::validate_parameters(self::track_dwell_parameters(), [
+            'cmid' => $cmid,
+            'seconds' => $seconds,
+        ]);
+
+        // Avoid abuse and noisy writes.
+        $seconds = max(1, min(120, (int)$params['seconds']));
+        $cmid = (int)$params['cmid'];
+
+        $cm = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+
+        if (!isloggedin() || isguestuser()) {
+            return false;
+        }
+
+        // Track only file/resource modules for this telemetry.
+        if ($cm->modname !== 'resource') {
+            return false;
+        }
+
+        $DB->insert_record('local_nextclicks_dwell', (object)[
+            'userid' => (int)$USER->id,
+            'courseid' => (int)$cm->course,
+            'cmid' => $cmid,
+            'seconds' => $seconds,
+            'timecreated' => time(),
+        ]);
+
+        return true;
+    }
+
+    public static function track_dwell_returns(): external_value {
+        return new external_value(PARAM_BOOL, 'Whether the dwell ping was stored');
+    }
+
+    public static function get_file_dwell_parameters(): external_function_parameters {
+        return new external_function_parameters([
+            'courseid' => new external_value(PARAM_INT, 'Course ID'),
+            'cmid' => new external_value(PARAM_INT, 'Resource course module ID'),
+            'userid' => new external_value(PARAM_INT, 'Optional filter by user ID (0 for all)', VALUE_DEFAULT, 0),
+            'since' => new external_value(PARAM_INT, 'Optional lower timestamp bound (0 for all)', VALUE_DEFAULT, 0),
+            'until' => new external_value(PARAM_INT, 'Optional upper timestamp bound (0 for all)', VALUE_DEFAULT, 0),
+        ]);
+    }
+
+    public static function get_file_dwell(int $courseid, int $cmid, int $userid = 0, int $since = 0, int $until = 0): array {
+        global $DB;
+
+        $params = self::validate_parameters(self::get_file_dwell_parameters(), [
+            'courseid' => $courseid,
+            'cmid' => $cmid,
+            'userid' => $userid,
+            'since' => $since,
+            'until' => $until,
+        ]);
+
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/nextclicks:viewtrajectories', $context);
+
+        $where = 'courseid = :courseid AND cmid = :cmid';
+        $sqlparams = [
+            'courseid' => (int)$params['courseid'],
+            'cmid' => (int)$params['cmid'],
+        ];
+
+        if ((int)$params['userid'] > 0) {
+            $where .= ' AND userid = :userid';
+            $sqlparams['userid'] = (int)$params['userid'];
+        }
+        if ((int)$params['since'] > 0) {
+            $where .= ' AND timecreated > :since';
+            $sqlparams['since'] = (int)$params['since'];
+        }
+        if ((int)$params['until'] > 0) {
+            $where .= ' AND timecreated <= :until';
+            $sqlparams['until'] = (int)$params['until'];
+        }
+
+        $sql = "SELECT userid, SUM(seconds) AS dwellseconds
+                  FROM {local_nextclicks_dwell}
+                 WHERE $where
+              GROUP BY userid
+              ORDER BY userid ASC";
+        $rows = $DB->get_records_sql($sql, $sqlparams);
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[] = [
+                'userid' => (int)$row->userid,
+                'dwellseconds' => (int)$row->dwellseconds,
+            ];
+        }
+
+        return $result;
+    }
+
+    public static function get_file_dwell_returns(): external_multiple_structure {
+        return new external_multiple_structure(
+            new external_single_structure([
+                'userid' => new external_value(PARAM_INT, 'Moodle user ID'),
+                'dwellseconds' => new external_value(PARAM_INT, 'Total tracked dwell seconds on the selected file'),
+            ])
+        );
+    }
 }
