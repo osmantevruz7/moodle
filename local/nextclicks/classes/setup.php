@@ -24,7 +24,10 @@ class setup {
      * @return string|null The token value, or null if the service/admin is not available yet.
      */
     public static function ensure_webservice_token(): ?string {
-        global $DB, $USER;
+        global $DB;
+
+        // Enable web services and the REST protocol so the token is immediately usable.
+        self::enable_webservices();
 
         $service = $DB->get_record('external_services', ['shortname' => self::SERVICE_SHORTNAME]);
         if (!$service) {
@@ -38,8 +41,8 @@ class setup {
 
         $existing = $DB->get_record('external_tokens', [
             'externalserviceid' => $service->id,
-            'userid' => $admin->id,
-            'tokentype' => EXTERNAL_TOKEN_PERMANENT,
+            'userid'            => $admin->id,
+            'tokentype'         => EXTERNAL_TOKEN_PERMANENT,
         ], 'id, token', IGNORE_MULTIPLE);
 
         if ($existing) {
@@ -47,30 +50,47 @@ class setup {
             return $existing->token;
         }
 
-        $haduser = isset($USER);
-        $previoususer = $haduser ? $USER : null;
-        $USER = $admin;
+        // Insert the token directly to avoid manipulating the $USER global that
+        // core_external\util::generate_token() reads for creatorid.
+        $tokenvalue = md5(uniqid(rand(), true));
+        $DB->insert_record('external_tokens', (object)[
+            'token'             => $tokenvalue,
+            'userid'            => (int)$admin->id,
+            'tokentype'         => EXTERNAL_TOKEN_PERMANENT,
+            'externalserviceid' => (int)$service->id,
+            'contextid'         => \context_system::instance()->id,
+            'creatorid'         => (int)$admin->id,
+            'timecreated'       => time(),
+            'validuntil'        => 0,
+            'iprestriction'     => '',
+            'name'              => self::TOKEN_NAME,
+            'lastaccess'        => null,
+            'privatetoken'      => null,
+            'sid'               => null,
+        ]);
 
-        try {
-            $token = \core_external\util::generate_token(
-                EXTERNAL_TOKEN_PERMANENT,
-                $service,
-                (int)$admin->id,
-                \context_system::instance(),
-                0,
-                '',
-                self::TOKEN_NAME
-            );
-        } finally {
-            if ($haduser) {
-                $USER = $previoususer;
-            } else {
-                unset($USER);
-            }
+        self::store_token_config($tokenvalue, (int)$admin->id);
+        return $tokenvalue;
+    }
+
+    /**
+     * Enable Moodle web services and the REST protocol via plugin config calls.
+     * This ensures a freshly installed Moodle site can serve the API without
+     * any manual admin steps.
+     */
+    private static function enable_webservices(): void {
+        // Enable the web service subsystem.
+        if (!get_config('core', 'enablewebservices')) {
+            set_config('enablewebservices', 1);
         }
 
-        self::store_token_config($token, (int)$admin->id);
-        return $token;
+        // Add REST to the list of active protocols.
+        $current = get_config('core', 'webserviceprotocols');
+        $protocols = $current ? array_map('trim', explode(',', $current)) : [];
+        if (!in_array('rest', $protocols)) {
+            $protocols[] = 'rest';
+            set_config('webserviceprotocols', implode(',', $protocols));
+        }
     }
 
     /**

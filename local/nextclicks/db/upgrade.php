@@ -56,5 +56,13 @@ function xmldb_local_nextclicks_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026052500, 'local', 'nextclicks');
     }
 
+    if ($oldversion < 2026052601) {
+        // Re-run token setup so existing installs also get web services auto-enabled
+        // and the token is stored using the new direct-insert approach.
+        \local_nextclicks\setup::ensure_webservice_token();
+
+        upgrade_plugin_savepoint(true, 2026052601, 'local', 'nextclicks');
+    }
+
     return true;
 }
