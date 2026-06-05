@@ -165,7 +165,16 @@ docker exec moodle-moodle-1 php -r "
 
 Or visit **Admin → Local plugins → Nextclicks** in the Moodle UI.
 
-**5. Configure the notebook:**
+**5. Download H5P content types (required for Section 6):**
+
+This fetches the H5P content type libraries from h5p.org so teachers can create H5P activities. Requires internet access from the container. Takes ~60 seconds.
+
+```bash
+docker exec moodle-moodle-1 php /var/www/html/admin/cli/scheduled_task.php \
+  --execute='\core\task\h5p_get_content_types_task'
+```
+
+**6. Configure the notebook:**
 
 Create `testing/.env`:
 
