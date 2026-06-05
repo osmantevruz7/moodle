@@ -224,4 +224,99 @@ class external extends external_api {
             ])
         );
     }
+
+    public static function get_xapi_statements_parameters(): external_function_parameters {
+        return new external_function_parameters([
+            'courseid' => new external_value(PARAM_INT, 'Filter by course ID — 0 means all courses', VALUE_DEFAULT, 0),
+            'userid'   => new external_value(PARAM_INT, 'Filter by user ID — 0 means all users',    VALUE_DEFAULT, 0),
+            'cmid'     => new external_value(PARAM_INT, 'Filter by H5P activity cmid — 0 means all', VALUE_DEFAULT, 0),
+            'since'    => new external_value(PARAM_INT, 'Only return statements after this Unix timestamp — 0 means all', VALUE_DEFAULT, 0),
+        ]);
+    }
+
+    public static function get_xapi_statements(int $courseid = 0, int $userid = 0, int $cmid = 0, int $since = 0): array {
+        global $DB;
+
+        $params = self::validate_parameters(self::get_xapi_statements_parameters(), [
+            'courseid' => $courseid,
+            'userid'   => $userid,
+            'cmid'     => $cmid,
+            'since'    => $since,
+        ]);
+
+        $context = \context_system::instance();
+        self::validate_context($context);
+        require_capability('local/nextclicks:viewtrajectories', $context);
+
+        $conditions = [];
+        $sqlparams  = [];
+
+        if ($params['courseid'] > 0) {
+            $conditions[]          = 'courseid = :courseid';
+            $sqlparams['courseid'] = (int)$params['courseid'];
+        }
+        if ($params['userid'] > 0) {
+            $conditions[]        = 'userid = :userid';
+            $sqlparams['userid'] = (int)$params['userid'];
+        }
+        if ($params['cmid'] > 0) {
+            $conditions[]      = 'cmid = :cmid';
+            $sqlparams['cmid'] = (int)$params['cmid'];
+        }
+        if ($params['since'] > 0) {
+            $conditions[]       = 'timecreated > :since';
+            $sqlparams['since'] = (int)$params['since'];
+        }
+
+        $where   = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+        $sql     = "SELECT id, userid, courseid, cmid, verb, objectid,
+                           completion, success, score_raw, score_min, score_max,
+                           duration_seconds, timecreated
+                      FROM {local_nextclicks_xapi}
+                    $where
+                    ORDER BY userid ASC, timecreated ASC";
+
+        $records = $DB->get_records_sql($sql, $sqlparams);
+
+        $result = [];
+        foreach ($records as $r) {
+            $result[] = [
+                'id'               => (int)$r->id,
+                'userid'           => (int)$r->userid,
+                'courseid'         => (int)$r->courseid,
+                'cmid'             => (int)$r->cmid,
+                'verb'             => (string)$r->verb,
+                'objectid'         => (string)$r->objectid,
+                'completion'       => (int)$r->completion,
+                'success'          => (int)$r->success,
+                'score_raw'        => (int)$r->score_raw,
+                'score_min'        => (int)$r->score_min,
+                'score_max'        => (int)$r->score_max,
+                'duration_seconds' => (int)$r->duration_seconds,
+                'timecreated'      => (int)$r->timecreated,
+            ];
+        }
+
+        return $result;
+    }
+
+    public static function get_xapi_statements_returns(): external_multiple_structure {
+        return new external_multiple_structure(
+            new external_single_structure([
+                'id'               => new external_value(PARAM_INT,    'Statement record ID'),
+                'userid'           => new external_value(PARAM_INT,    'Moodle user ID'),
+                'courseid'         => new external_value(PARAM_INT,    'Course ID'),
+                'cmid'             => new external_value(PARAM_INT,    'H5P activity course module ID'),
+                'verb'             => new external_value(PARAM_ALPHA,  'xAPI verb local name, e.g. answered, completed, progressed'),
+                'objectid'         => new external_value(PARAM_RAW,   'xAPI object ID identifying sub-content within the H5P activity'),
+                'completion'       => new external_value(PARAM_INT,    '1 if the learner completed this interaction'),
+                'success'          => new external_value(PARAM_INT,    '1 if the learner succeeded'),
+                'score_raw'        => new external_value(PARAM_INT,    'Raw score (0 if not reported)'),
+                'score_min'        => new external_value(PARAM_INT,    'Minimum possible score (0 if not reported)'),
+                'score_max'        => new external_value(PARAM_INT,    'Maximum possible score (0 if not reported)'),
+                'duration_seconds' => new external_value(PARAM_INT,    'Interaction duration in seconds (0 if not reported)'),
+                'timecreated'      => new external_value(PARAM_INT,    'Unix timestamp when the statement was received'),
+            ])
+        );
+    }
 }

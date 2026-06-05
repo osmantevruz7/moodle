@@ -26,6 +26,14 @@ $functions = [
         'type'        => 'write',
         'ajax'        => true,
     ],
+    'local_nextclicks_get_xapi_statements' => [
+        'classname'   => 'local_nextclicks\external',
+        'methodname'  => 'get_xapi_statements',
+        'description' => 'Returns xAPI statements captured from H5P activities for EDM processing.',
+        'type'        => 'read',
+        'capabilities' => 'local/nextclicks:viewtrajectories',
+        'ajax'        => false,
+    ],
 ];
 
 // Pre-built service: admins can create a token for this service and
@@ -36,6 +44,7 @@ $services = [
             'local_nextclicks_get_trajectories',
             'local_nextclicks_get_file_dwell',
             'local_nextclicks_track_dwell',
+            'local_nextclicks_get_xapi_statements',
             'core_course_get_contents',
             'gradereport_user_get_grade_items',
             'mod_quiz_get_quizzes_by_courses',

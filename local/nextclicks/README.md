@@ -39,6 +39,7 @@ Built as part of a Bachelor Thesis on post-processing EDM in Learning Management
 | Page navigation (clickstream) | Moodle event observers | `local_nextclicks_events` |
 | Transition counts (A → B) | Derived from consecutive events | `local_nextclicks_trans` |
 | File engagement (dwell time) | Client-side JS heartbeat | `local_nextclicks_dwell` |
+| H5P xAPI statements | Event observer (`statement_received`) | `local_nextclicks_xapi` |
 | Assessment scores | Moodle core grade API (read-only) | Moodle core tables |
 
 **What the analysis produces:**
@@ -47,6 +48,7 @@ Built as part of a Bachelor Thesis on post-processing EDM in Learning Management
 - Most common learner navigation paths
 - Per-user engagement summary
 - Comparison of file dwell time between students who passed vs. failed a quiz in the same section
+- H5P xAPI statement analysis — verb distribution, completion/success rates, score distribution, per-user summary
 
 ---
 
@@ -59,15 +61,19 @@ Built as part of a Bachelor Thesis on post-processing EDM in Learning Management
 │  ┌─────────────┐    ┌──────────────────────────┐   │
 │  │  Observer   │    │      lib.php hook         │   │
 │  │ (events.php)│    │  (injects dwelltracker)   │   │
-│  └──────┬──────┘    └──────────┬───────────────┘   │
-│         │                      │                    │
-│         ▼                      ▼                    │
-│  ┌─────────────────┐   ┌──────────────────────┐    │
-│  │  DB tables      │   │  dwelltracker.js      │    │
-│  │  events / trans │   │  (AMD module)         │    │
-│  │  last / dwell   │   └──────────┬────────────┘    │
-│  └────────┬────────┘              │ AJAX ping        │
-│           │            ◄──────────┘                  │
+│  │  · nav      │    └──────────┬───────────────┘   │
+│  │  · H5P xAPI │               │                    │
+│  └──────┬──────┘               ▼                    │
+│         │             ┌──────────────────────┐      │
+│         │             │  dwelltracker.js      │      │
+│         │             │  (AMD module)         │      │
+│         ▼             └──────────┬────────────┘      │
+│  ┌─────────────────┐             │ AJAX ping          │
+│  │  DB tables      │  ◄──────────┘                   │
+│  │  events / trans │                                 │
+│  │  last / dwell   │                                 │
+│  │  xapi           │                                 │
+│  └────────┬────────┘                                 │
 │           ▼                                         │
 │  ┌─────────────────┐                               │
 │  │  external.php   │  ← REST web service           │
@@ -302,6 +308,41 @@ Write endpoint called by the client-side `dwelltracker.js`. Not intended for ext
 
 ---
 
+#### `local_nextclicks_get_xapi_statements`
+
+Returns xAPI statements captured from H5P activities, one row per statement. Each statement represents a single learner interaction (a question answered, an activity completed) with its verb, score, completion, success, and duration.
+
+**Parameters (all optional):**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `courseid` | int | 0 | Filter to a specific course. 0 = all courses. |
+| `userid` | int | 0 | Filter to a specific user. 0 = all users. |
+| `cmid` | int | 0 | Filter to a specific H5P activity. 0 = all activities. |
+| `since` | int | 0 | Only return statements after this Unix timestamp. |
+
+**Response fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | int | Statement record ID |
+| `userid` | int | Moodle user ID |
+| `courseid` | int | Course ID |
+| `cmid` | int | H5P activity course module ID |
+| `verb` | string | xAPI verb local name — `answered` or `completed` |
+| `objectid` | string | xAPI object ID — identifies the specific sub-content within the H5P activity |
+| `completion` | int | 1 if the learner completed this interaction |
+| `success` | int | 1 if the learner succeeded |
+| `score_raw` | int | Raw score (0 if not reported) |
+| `score_min` | int | Minimum possible score (0 if not reported) |
+| `score_max` | int | Maximum possible score (0 if not reported) |
+| `duration_seconds` | int | Interaction duration in seconds (0 if not reported) |
+| `timecreated` | int | Unix timestamp when the statement was received |
+
+> **Note on verbs:** Moodle's H5P module only passes statements with `answered` or `completed` verbs through to the event system. Other verbs (e.g. `progressed`) are filtered out by the H5P xAPI handler before the event fires.
+
+---
+
 #### Bundled Moodle core functions
 
 The `learner_trajectory_api` service also exposes these Moodle core functions under the same token:
@@ -347,6 +388,7 @@ Select the Python 3.9+ kernel and run cells from top to bottom.
 
 - Sections 1–4 work as soon as learners have browsed Moodle (at least a few page views per user).
 - Section 5 requires a course with at least one file resource and one quiz, and at least one student submission.
+- Section 6 requires at least one H5P activity with learner interactions. If no H5P content types are installed yet, run the scheduled task first (see Installation).
 - If data is missing the notebook prints a descriptive message and skips to the next section.
 
 ### Notebook Sections
@@ -369,7 +411,15 @@ Aggregates per learner: total events, unique activities visited, total time in s
 
 #### 5. Quiz Pass vs File Time (same section)
 
-Selects a course section, identifies the file resource and quiz in that section, and separates students into "Passed" and "Failed" groups based on their quiz grade. Computes average dwell time on the file for each group and plots a bar chart. The file dwell time is cut off at the quiz deadline (if set) or at the student's last allowed attempt.
+Selects a course section, identifies the file resource and quiz in that section, and separates students into "Passed" and "Failed" groups based on their quiz grade. Computes average file engagement time per group and plots a bar chart. The file time is cut off at the quiz deadline (if set) or at the student's last allowed attempt.
+
+File engagement time is taken from dwell pings where available (accurate), and falls back to trajectory `timespent` when no dwell data exists (e.g. the file opens in a new tab). The notebook prints a data source summary after the result table and labels the chart accordingly — if trajectory fallback was used the chart title shows a warning, since `timespent` overestimates reading time by absorbing idle time between closing the file and the next Moodle click.
+
+---
+
+#### 6. H5P xAPI Statements
+
+Calls `local_nextclicks_get_xapi_statements` and produces three side-by-side charts: verb distribution (how many `answered` vs `completed` statements), completion and success rates among completed interactions, and a score percentage histogram for answered questions. A per-user summary table shows total statements, unique H5P activities visited, total completions and successes, average raw score, and total interaction duration per learner.
 
 Before running, set these four variables at the top of the cell to match the course you want to analyse:
 
@@ -450,6 +500,28 @@ File engagement pings from the client-side dwell tracker.
 
 Index: `(courseid, cmid, userid)`
 
+### `local_nextclicks_xapi`
+
+xAPI statements received from H5P activities — one row per statement, captured in real time by the event observer.
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | int | Primary key |
+| `userid` | int | Moodle user ID |
+| `courseid` | int | Course ID |
+| `cmid` | int | H5P activity course module ID |
+| `verb` | char(100) | xAPI verb local name — `answered` or `completed` |
+| `objectid` | char(255) | xAPI object ID — identifies sub-content within the H5P activity |
+| `completion` | int(1) | 1 if the learner completed this interaction |
+| `success` | int(1) | 1 if the learner succeeded |
+| `score_raw` | int | Raw score (0 if not reported) |
+| `score_min` | int | Minimum possible score (0 if not reported) |
+| `score_max` | int | Maximum possible score (0 if not reported) |
+| `duration_seconds` | int | Interaction duration in seconds, parsed from ISO 8601 (0 if not reported) |
+| `timecreated` | int | Unix timestamp when the statement was received |
+
+Index: `(userid, courseid)`
+
 ---
 
 ## Design Decisions
@@ -466,11 +538,21 @@ Rather than computing time-on-page client-side, the server derives it post-hoc f
 **Dwell pings capped at 120 seconds**
 Each dwell ping covers at most 120 seconds of active time. This prevents a single stuck tab from producing unrealistically large dwell values. On the server, the same cap is enforced in `track_dwell()`.
 
+**Dwell tracking limitation: PDFs opened in a new tab**
+`dwelltracker.js` relies on `document.hasFocus()` and `document.visibilityState` to determine whether the learner is actively engaged. When a file resource opens in a new tab (the Moodle default for PDFs), the Moodle page immediately loses focus and visibility — so no dwell pings are sent, and `local_nextclicks_dwell` records zero seconds for the entire PDF session.
+
+The trajectory `timespent` field (computed via `LEAD()`) is not a reliable substitute: it measures the gap between the PDF click and the learner's next navigation event in Moodle, which absorbs any idle time between finishing the PDF and returning to the course. A learner who reads a PDF for 3 minutes and then takes a 20-minute break before clicking the next activity produces a `timespent` of ~23 minutes. The result is a systematic underestimate in the dwell table and a systematic overestimate in the trajectory table — neither gives accurate PDF reading time.
+
+To enable accurate dwell tracking, a teacher can change the file resource's display setting to **Embed**, which renders the PDF inside the Moodle page frame and keeps the tracker active. This cannot be enforced by the plugin and requires a per-resource configuration choice.
+
 **Token generated for site admin, not a dedicated service account**
 The API token is generated for the primary site administrator because the admin already holds all required capabilities. This keeps installation to a single step. For a production deployment with multiple admins, consider creating a dedicated service account with only the `local/nextclicks:viewtrajectories` capability.
 
 **Auto-enabling web services on install**
 The plugin calls `set_config('enablewebservices', 1)` and adds `rest` to `webserviceprotocols` during installation. This is necessary for the token to function and removes the most common post-install manual step. It uses Moodle's public config API, no core files are modified.
+
+**xAPI capture via event observer, not direct LRS integration**
+H5P activities send xAPI statements through Moodle's internal xAPI pipeline. Rather than implementing a standalone Learner Record Store (LRS) — a system-agnostic service that receives xAPI statements over a standardised REST API — the plugin registers an observer for `\mod_h5pactivity\event\statement_received`. This event fires after Moodle has already validated the statement and saved it to its own H5P tables. The observer extracts verb, object, result, and duration from the minified statement and stores them in `local_nextclicks_xapi`, making the data available through the same token-authenticated API as the rest of the plugin. The approach is Moodle-specific but requires no additional infrastructure and stays consistent with how the rest of the plugin works. Moodle's H5P handler filters statements to `answered` and `completed` verbs before firing the event, so only those two verbs appear in the table.
 
 ---
 
@@ -495,8 +577,8 @@ local/nextclicks/
 │   └── events.php               Event observer registrations
 │
 ├── classes/
-│   ├── external.php             Web service implementation (get_trajectories, track_dwell, get_file_dwell)
-│   ├── observer.php             Event handlers — records events and transitions
+│   ├── external.php             Web service implementation (get_trajectories, track_dwell, get_file_dwell, get_xapi_statements)
+│   ├── observer.php             Event handlers — records nav events, transitions, and H5P xAPI statements
 │   └── setup.php                Installation helper — token generation and web service setup
 │
 └── amd/

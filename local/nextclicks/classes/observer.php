@@ -132,6 +132,72 @@ class observer {
         self::upsert_last($userid, $courseid, 'course', $courseid);
     }
 
+    public static function handle_h5p_statement(\mod_h5pactivity\event\statement_received $event): void {
+        global $DB;
+
+        $userid   = (int)$event->userid;
+        $courseid = (int)$event->courseid;
+        $cmid     = (int)$event->contextinstanceid;
+
+        if ($userid <= 0 || $courseid <= 0 || $cmid <= 0) {
+            return;
+        }
+
+        // Moodle stores the minified statement fields directly in other (verb, object, result, …).
+        $stmt = $event->other;
+        if (empty($stmt) || !is_array($stmt)) {
+            return;
+        }
+        if (!is_array($stmt)) {
+            return;
+        }
+
+        // xAPI verb IDs are full URIs — extract the local name after the last slash.
+        $verburi = (string)($stmt['verb']['id'] ?? '');
+        $parts   = explode('/', rtrim($verburi, '/'));
+        $verb    = substr(end($parts) ?: 'unknown', 0, 100);
+
+        // Object ID identifies which sub-content within the H5P activity was acted on.
+        $objectid = substr((string)($stmt['object']['id'] ?? ''), 0, 255);
+
+        $result          = is_array($stmt['result'] ?? null) ? $stmt['result'] : [];
+        $completion      = isset($result['completion']) ? (int)(bool)$result['completion'] : 0;
+        $success         = isset($result['success'])    ? (int)(bool)$result['success']    : 0;
+        $score           = is_array($result['score'] ?? null) ? $result['score'] : [];
+        $score_raw       = isset($score['raw']) ? (int)$score['raw'] : 0;
+        $score_min       = isset($score['min']) ? (int)$score['min'] : 0;
+        $score_max       = isset($score['max']) ? (int)$score['max'] : 0;
+
+        // Duration is ISO 8601 (e.g. "PT30S", "PT1M5S") — parse to whole seconds.
+        $duration_seconds = 0;
+        if (!empty($result['duration'])) {
+            try {
+                $interval         = new \DateInterval((string)$result['duration']);
+                $duration_seconds = ($interval->d * 86400)
+                                  + ($interval->h * 3600)
+                                  + ($interval->i * 60)
+                                  + (int)$interval->s;
+            } catch (\Exception $e) {
+                // Malformed ISO 8601 duration — leave as 0.
+            }
+        }
+
+        $DB->insert_record('local_nextclicks_xapi', (object)[
+            'userid'           => $userid,
+            'courseid'         => $courseid,
+            'cmid'             => $cmid,
+            'verb'             => $verb,
+            'objectid'         => $objectid,
+            'completion'       => $completion,
+            'success'          => $success,
+            'score_raw'        => $score_raw,
+            'score_min'        => $score_min,
+            'score_max'        => $score_max,
+            'duration_seconds' => $duration_seconds,
+            'timecreated'      => time(),
+        ]);
+    }
+
     public static function handle_coursemodule_viewed(\core\event\course_module_viewed $event): void {
         global $DB;
 

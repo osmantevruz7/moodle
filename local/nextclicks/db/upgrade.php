@@ -64,5 +64,36 @@ function xmldb_local_nextclicks_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026052601, 'local', 'nextclicks');
     }
 
+    if ($oldversion < 2026060500) {
+        // Add xAPI statement table to capture H5P interactions in real time.
+        // Moodle's H5P module fires \mod_h5pactivity\event\statement_received for every
+        // learner interaction; our observer stores each statement here so external EDM
+        // tools can access the full interaction sequence, not just the final result.
+        $table = new \xmldb_table('local_nextclicks_xapi');
+
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id',               XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('userid',           XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, null);
+            $table->add_field('courseid',         XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, null);
+            $table->add_field('cmid',             XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, null);
+            $table->add_field('verb',             XMLDB_TYPE_CHAR,    '100', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('objectid',         XMLDB_TYPE_CHAR,    '255', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('completion',       XMLDB_TYPE_INTEGER, '1',   null, XMLDB_NOTNULL, null, 0);
+            $table->add_field('success',          XMLDB_TYPE_INTEGER, '1',   null, XMLDB_NOTNULL, null, 0);
+            $table->add_field('score_raw',        XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, 0);
+            $table->add_field('score_min',        XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, 0);
+            $table->add_field('score_max',        XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, 0);
+            $table->add_field('duration_seconds', XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, 0);
+            $table->add_field('timecreated',      XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, null);
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('userid_courseid', XMLDB_INDEX_NOTUNIQUE, ['userid', 'courseid']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026060500, 'local', 'nextclicks');
+    }
+
     return true;
 }

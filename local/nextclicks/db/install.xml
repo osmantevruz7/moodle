@@ -64,5 +64,29 @@
       </INDEXES>
     </TABLE>
 
+    <TABLE NAME="local_nextclicks_xapi" COMMENT="xAPI statements received from H5P activities — one row per statement, captured in real time by the event observer">
+      <FIELDS>
+        <FIELD NAME="id"               TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="true" COMMENT="Primary key"/>
+        <FIELD NAME="userid"           TYPE="int"  LENGTH="10" NOTNULL="true" COMMENT="Moodle user ID"/>
+        <FIELD NAME="courseid"         TYPE="int"  LENGTH="10" NOTNULL="true" COMMENT="Course ID"/>
+        <FIELD NAME="cmid"             TYPE="int"  LENGTH="10" NOTNULL="true" COMMENT="Course module ID of the H5P activity"/>
+        <FIELD NAME="verb"             TYPE="char" LENGTH="100" NOTNULL="true" COMMENT="xAPI verb local name, e.g. answered, completed, progressed"/>
+        <FIELD NAME="objectid"         TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" COMMENT="xAPI object ID — identifies sub-content within the H5P activity"/>
+        <FIELD NAME="completion"       TYPE="int"  LENGTH="1"  NOTNULL="true" DEFAULT="0" COMMENT="1 if the learner completed this interaction, 0 otherwise"/>
+        <FIELD NAME="success"          TYPE="int"  LENGTH="1"  NOTNULL="true" DEFAULT="0" COMMENT="1 if the learner succeeded, 0 otherwise"/>
+        <FIELD NAME="score_raw"        TYPE="int"  LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Raw score reported by H5P (0 if not present)"/>
+        <FIELD NAME="score_min"        TYPE="int"  LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Minimum possible score (0 if not present)"/>
+        <FIELD NAME="score_max"        TYPE="int"  LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Maximum possible score (0 if not present)"/>
+        <FIELD NAME="duration_seconds" TYPE="int"  LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Interaction duration in seconds, parsed from ISO 8601 (0 if not reported)"/>
+        <FIELD NAME="timecreated"      TYPE="int"  LENGTH="10" NOTNULL="true" COMMENT="Unix timestamp when the statement was received"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userid_courseid" UNIQUE="false" FIELDS="userid, courseid"/>
+      </INDEXES>
+    </TABLE>
+
   </TABLES>
 </XMLDB>

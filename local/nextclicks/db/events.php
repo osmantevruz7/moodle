@@ -14,4 +14,10 @@ $observers = [
         'includefile' => '/local/nextclicks/classes/observer.php',
         'priority'    => 9999,
     ],
+    [
+        'eventname'   => '\mod_h5pactivity\event\statement_received',
+        'callback'    => '\local_nextclicks\observer::handle_h5p_statement',
+        'includefile' => '/local/nextclicks/classes/observer.php',
+        'priority'    => 9999,
+    ],
 ];
