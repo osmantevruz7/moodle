@@ -58,27 +58,27 @@ Built as part of a Bachelor Thesis on post-processing EDM in Learning Management
 ┌─────────────────────────────────────────────────────┐
 │                   Moodle (PHP)                      │
 │                                                     │
-│  ┌─────────────┐    ┌──────────────────────────┐   │
-│  │  Observer   │    │      lib.php hook         │   │
-│  │ (events.php)│    │  (injects dwelltracker)   │   │
-│  │  · nav      │    └──────────┬───────────────┘   │
+│  ┌─────────────┐    ┌──────────────────────────┐    │
+│  │  Observer   │    │      lib.php hook        │    │
+│  │ (events.php)│    │  (injects dwelltracker)  │    │
+│  │  · nav      │    └──────────┬───────────────┘    │
 │  │  · H5P xAPI │               │                    │
 │  └──────┬──────┘               ▼                    │
 │         │             ┌──────────────────────┐      │
-│         │             │  dwelltracker.js      │      │
-│         │             │  (AMD module)         │      │
-│         ▼             └──────────┬────────────┘      │
-│  ┌─────────────────┐             │ AJAX ping          │
-│  │  DB tables      │  ◄──────────┘                   │
-│  │  events / trans │                                 │
-│  │  last / dwell   │                                 │
-│  │  xapi           │                                 │
-│  └────────┬────────┘                                 │
+│         │             │  dwelltracker.js     │      │
+│         │             │  (AMD module)        │      │
+│         ▼             └──────────┬───────────┘      │
+│  ┌─────────────────┐             │ AJAX ping        │
+│  │  DB tables      │  ◄──────────┘                  │
+│  │  events / trans │                                │
+│  │  last / dwell   │                                │
+│  │  xapi           │                                │
+│  └────────┬────────┘                                │
 │           ▼                                         │
-│  ┌─────────────────┐                               │
-│  │  external.php   │  ← REST web service           │
-│  │  (web service)  │                               │
-│  └────────┬────────┘                               │
+│  ┌─────────────────┐                                │
+│  │  external.php   │  ← REST web service            │
+│  │  (web service)  │                                │
+│  └────────┬────────┘                                │
 └───────────┼─────────────────────────────────────────┘
             │  HTTP REST + token
             ▼

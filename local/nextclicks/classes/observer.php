@@ -148,9 +148,6 @@ class observer {
         if (empty($stmt) || !is_array($stmt)) {
             return;
         }
-        if (!is_array($stmt)) {
-            return;
-        }
 
         // xAPI verb IDs are full URIs — extract the local name after the last slash.
         $verburi = (string)($stmt['verb']['id'] ?? '');
