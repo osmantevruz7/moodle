@@ -52,7 +52,7 @@ class setup {
 
         // Insert the token directly to avoid manipulating the $USER global that
         // core_external\util::generate_token() reads for creatorid.
-        $tokenvalue = md5(uniqid(rand(), true));
+        $tokenvalue = bin2hex(random_bytes(16));
         $DB->insert_record('external_tokens', (object)[
             'token'             => $tokenvalue,
             'userid'            => (int)$admin->id,

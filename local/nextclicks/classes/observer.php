@@ -10,7 +10,7 @@ class observer {
     private static function is_editing_noise(): bool {
         // When you are in edit mode, Moodle triggers many admin-like views.
         // We skip those to avoid polluting transitions.
-        return !empty($_GET['edit']) || !empty($_POST['edit']);
+        return (bool) optional_param('edit', false, PARAM_BOOL);
     }
 
     private static function log_event(int $userid, int $courseid, string $itemtype, int $itemid): void {

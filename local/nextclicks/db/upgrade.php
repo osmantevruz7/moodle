@@ -77,7 +77,7 @@ function xmldb_local_nextclicks_upgrade($oldversion) {
             $table->add_field('courseid',         XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, null);
             $table->add_field('cmid',             XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, null);
             $table->add_field('verb',             XMLDB_TYPE_CHAR,    '100', null, XMLDB_NOTNULL, null, null);
-            $table->add_field('objectid',         XMLDB_TYPE_CHAR,    '255', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('objectid',         XMLDB_TYPE_CHAR,    '255', null, XMLDB_NOTNULL, null, null);
             $table->add_field('completion',       XMLDB_TYPE_INTEGER, '1',   null, XMLDB_NOTNULL, null, 0);
             $table->add_field('success',          XMLDB_TYPE_INTEGER, '1',   null, XMLDB_NOTNULL, null, 0);
             $table->add_field('score_raw',        XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, 0);
@@ -93,6 +93,26 @@ function xmldb_local_nextclicks_upgrade($oldversion) {
         }
 
         upgrade_plugin_savepoint(true, 2026060500, 'local', 'nextclicks');
+    }
+
+    if ($oldversion < 2026082700) {
+        // Add missing lookup indexes to improve query performance on every page navigation.
+
+        // local_nextclicks_last: queried by (userid, courseid) on every page view.
+        $table = new \xmldb_table('local_nextclicks_last');
+        $index = new \xmldb_index('userid_courseid', XMLDB_INDEX_NOTUNIQUE, ['userid', 'courseid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // local_nextclicks_trans: queried by (courseid, source, target) on every transition upsert.
+        $table = new \xmldb_table('local_nextclicks_trans');
+        $index = new \xmldb_index('courseid_source_target', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'source', 'target']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026082700, 'local', 'nextclicks');
     }
 
     return true;

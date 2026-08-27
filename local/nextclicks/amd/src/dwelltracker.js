@@ -44,7 +44,9 @@ define(['core/ajax'], function(Ajax) {
             }
         });
 
-        window.addEventListener('beforeunload', function() {
+        // pagehide fires more reliably than beforeunload on mobile browsers
+        // (Android Chrome, iOS Safari) when the user swipes away or closes the tab.
+        window.addEventListener('pagehide', function() {
             flush();
         });
     };

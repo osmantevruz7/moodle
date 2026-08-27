@@ -225,7 +225,7 @@ For `mod_resource` (file) pages, `lib.php` injects the AMD JavaScript module `lo
 
 2. Every 10 seconds, if active, it sends a small AJAX call to `local_nextclicks_track_dwell` with the elapsed seconds. Each ping is capped at 120 seconds to guard against runaway values.
 
-3. A final flush is sent when the tab becomes hidden (`visibilitychange`) or the page is about to unload (`beforeunload`).
+3. A final flush is sent when the tab becomes hidden (`visibilitychange`) or the page is unloaded (`pagehide`).
 
 This produces a series of small dwell records in `local_nextclicks_dwell`. The analysis notebook aggregates them per user per file.
 
@@ -424,12 +424,6 @@ Selects a course section, identifies the file resource and quiz in that section,
 
 File engagement time is taken from dwell pings where available (accurate), and falls back to trajectory `timespent` when no dwell data exists (e.g. the file opens in a new tab). The notebook prints a data source summary after the result table and labels the chart accordingly — if trajectory fallback was used the chart title shows a warning, since `timespent` overestimates reading time by absorbing idle time between closing the file and the next Moodle click.
 
----
-
-#### 6. H5P xAPI Statements
-
-Calls `local_nextclicks_get_xapi_statements` and produces three side-by-side charts: verb distribution (how many `answered` vs `completed` statements), completion and success rates among completed interactions, and a score percentage histogram for answered questions. A per-user summary table shows total statements, unique H5P activities visited, total completions and successes, average raw score, and total interaction duration per learner.
-
 Before running, set these four variables at the top of the cell to match the course you want to analyse:
 
 ```python
@@ -448,6 +442,12 @@ To find the right IDs, run the cell once with just `ANALYSIS_COURSEID` set, the 
 > ANALYSIS_QUIZ_ITEMID = 18
 > ANALYSIS_FILE_ITEMID = 14
 > ```
+
+---
+
+#### 6. H5P xAPI Statements
+
+Calls `local_nextclicks_get_xapi_statements` and produces three side-by-side charts: verb distribution (how many `answered` vs `completed` statements), completion and success rates among completed interactions, and a score percentage histogram for answered questions. A per-user summary table shows total statements, unique H5P activities visited, total completions and successes, average raw score, and total interaction duration per learner.
 
 ---
 

@@ -126,13 +126,13 @@ class external extends external_api {
         $seconds = max(1, min(120, (int)$params['seconds']));
         $cmid = (int)$params['cmid'];
 
-        $cm = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
-        $context = \context_module::instance($cm->id);
-        self::validate_context($context);
-
         if (!isloggedin() || isguestuser()) {
             return false;
         }
+
+        $cm = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
 
         // Track only file/resource modules for this telemetry.
         if ($cm->modname !== 'resource') {
