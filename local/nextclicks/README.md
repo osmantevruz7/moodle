@@ -481,6 +481,9 @@ Aggregated transition counts.
 | `cnt` | int | Number of times this transition was observed |
 | `timemodified` | int | Last update timestamp |
 
+Index: `(courseid, source, target)`
+
+
 ### `local_nextclicks_last`
 
 Last-seen item per user per course — used internally by the observer to determine the source of the next transition.
@@ -493,6 +496,9 @@ Last-seen item per user per course — used internally by the observer to determ
 | `itemtype` | char(20) | `course` or `cm` |
 | `itemid` | int | Item identifier |
 | `timecreated` | int | Timestamp of this view |
+
+Index: `(userid, courseid)`
+
 
 ### `local_nextclicks_dwell`
 
